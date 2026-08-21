@@ -44,20 +44,52 @@ button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9
 </div>
 <script>
 const boxes=[...document.querySelectorAll('input[type=checkbox]')];
-const key='tslprb-si-checklist-v1';
-const saved=JSON.parse(localStorage.getItem(key)||'[]');
-boxes.forEach((b,i)=>b.checked=!!saved[i]);
+const key='tslprb-si-checklist-v2';
+const saved=JSON.parse(localStorage.getItem(key)||'null');
+
+// Restore every selection automatically when the page is reopened.
+if (Array.isArray(saved)) {
+  boxes.forEach((b,i)=>b.checked=saved[i] === true);
+}
+
+function saveSelections(){
+  localStorage.setItem(key,JSON.stringify(boxes.map(b=>b.checked)));
+}
+
 function update(){
  const done=boxes.filter(b=>b.checked).length, total=boxes.length, pct=total?Math.round(done/total*100):0;
  document.getElementById('count').textContent=done;
  document.getElementById('total').textContent=total;
  document.getElementById('pct').textContent=pct+'%';
  document.getElementById('bar').style.width=pct+'%';
- localStorage.setItem(key,JSON.stringify(boxes.map(b=>b.checked)));
+ saveSelections();
 }
+
 boxes.forEach(b=>b.addEventListener('change',update));
-document.getElementById('all').onclick=()=>{boxes.forEach(b=>b.checked=true);update()};
-document.getElementById('clear').onclick=()=>{boxes.forEach(b=>b.checked=false);update()};
+
+document.getElementById('all').onclick=()=>{
+  boxes.forEach(b=>b.checked=true);
+  update();
+};
+
+document.getElementById('clear').onclick=()=>{
+  if(confirm('Clear all saved checklist selections?')){
+    boxes.forEach(b=>b.checked=false);
+    update();
+  }
+};
+
+// Save immediately when the browser is about to close or navigate away.
+window.addEventListener('beforeunload',saveSelections);
+
+// Keep the checklist synchronized if another browser tab updates it.
+window.addEventListener('storage',(event)=>{
+  if(event.key===key && event.newValue){
+    const latest=JSON.parse(event.newValue);
+    boxes.forEach((b,i)=>b.checked=latest[i] === true);
+    update();
+  }
+});
 document.querySelectorAll('.toggle').forEach(btn=>btn.onclick=()=>{
  const c=btn.closest('.section').querySelector('.content');
  const hidden=c.style.display==='none'; c.style.display=hidden?'':'none'; btn.textContent=hidden?'Collapse':'Expand';
